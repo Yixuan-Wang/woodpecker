@@ -9,31 +9,21 @@ mod tests {
     use crate::{
         common::{Resource, Swarm},
         fetcher,
-        hole::{HoleFlag, HoleSet},
+        hole::{HoleFlag, HoleSet, reply::{ReplyFlag, ReplySet}, HoleID},
         prebuilt::*,
     };
 
     #[tokio::test]
     async fn it_works() {
         let mut fetcher = fetcher::Fetcher::default();
-        let fetch = FetchSearch {
-            keyword: String::from("test"),
+        let fetch = FetchReply {
+            hole_id: HoleID(114514),
         };
-        let mut results = HoleSet::blank(HoleFlag::default());
-        for _ in 0..5 {
-            let result = fetcher
+        let result = fetcher
                 .fetch(&fetch)
-                .swarm(Some(Swarm::Concurrent {
-                    count: 3,
-                    page_size: 10,
-                }))
-                .flag(HoleFlag::default())
+                .flag(ReplyFlag::default())
                 .execute()
-                .await
-                .unwrap();
-            dbg!(result.len());
-            results |= result;
-        }
-        dbg!(results.len());
+                .await;
+        dbg!(result);
     }
 }

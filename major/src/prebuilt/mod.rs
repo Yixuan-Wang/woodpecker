@@ -7,7 +7,8 @@ use crate::{
 
 mod attention;
 mod feed;
+mod reply;
 mod search;
 mod single;
 
-pub use {attention::FetchAttention, feed::FetchFeed, search::FetchSearch, single::FetchSingle};
+pub use {attention::FetchAttention, feed::FetchFeed, reply::FetchReply, search::FetchSearch, single::FetchSingle};

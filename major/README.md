@@ -27,7 +27,6 @@ let result = fetcher
         count: 3,
         page_size: 50,
     }))
-    .flag()
     .execute()
     .await
     .unwrap();

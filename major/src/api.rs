@@ -6,7 +6,7 @@ use url::Url;
 
 use crate::{
     common::{Endpoint, Location},
-    hole::HoleSet,
+    hole::{HoleSet, reply::ReplySet},
 };
 
 pub const DEFAULT_API_BASE: &str = "https://pkuhelper.pku.edu.cn/services/pkuhole/api.php";
@@ -73,6 +73,12 @@ impl API {
 
 impl Endpoint<HoleSet> for API {
     fn locate(&self, location: &dyn Location<HoleSet>) -> Url {
+        location.locate(self.endpoint.clone())
+    }
+}
+
+impl Endpoint<ReplySet> for API {
+    fn locate(&self, location: &dyn Location<ReplySet>) -> Url {
         location.locate(self.endpoint.clone())
     }
 }
