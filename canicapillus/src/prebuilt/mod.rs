@@ -2,7 +2,9 @@ use reqwest::Url;
 
 use crate::{
     common::{Location, Swarm, SwarmError},
-    hole::*,
+    hole,
+    HoleSet,
+    ReplySet,
 };
 
 mod attention;

@@ -68,7 +68,6 @@ where
     R: Resource,
 {
     client: Client,
-    flag: R::Specifier,
     rx: Arc<AsyncMutex<mpsc::Receiver<Option<Url>>>>,
     ret: mpsc::Sender<Result<R, FetcherError>>,
 }
@@ -100,7 +99,7 @@ where
     #[inline]
     async fn fetch(&self, url: Url) -> Result<R, FetcherError> {
         let res = self.client.get(url).send().await?;
-        Ok(R::parse(res, self.flag.clone()).await?)
+        Ok(R::parse(res).await?)
     }
 }
 
@@ -123,7 +122,6 @@ where
 {
     fetcher: &'fch mut Fetcher<A, R>,
     location: &'lct dyn Location<R>,
-    flag: R::Specifier,
     swarm: Option<Swarm>,
 }
 
@@ -157,11 +155,6 @@ where
         }
     }
 
-    pub fn flag(mut self, flag: R::Specifier) -> Self {
-        self.flag = flag;
-        self
-    }
-
     pub fn swarm(mut self, swarm: Option<Swarm>) -> Self {
         self.swarm = swarm;
         self
@@ -176,7 +169,7 @@ where
             .dispatch(url, None, MEANINGLESS, MEANINGLESS)?;
         let res = client.get(url).send().await?;
 
-        Ok(R::parse(res, self.flag.clone()).await?)
+        Ok(R::parse(res).await?)
     }
 
     async fn execute_sequential(&mut self) -> Result<R, FetcherError> {
@@ -186,15 +179,15 @@ where
             (swarm, count, page_size)
         );
         let client = self.fetcher.client_builder.build();
-        let mut results = R::blank(self.flag.clone());
+        let mut results = R::default();
         for page in 1..=count {
             let url = self.fetcher.api.locate(self.location);
             let url = self.location.dispatch(url, Some(swarm), page, page_size)?;
             let res = client.get(url).send().await;
             if let Ok(res) = res {
-                let one_result = R::parse(res, self.flag.clone()).await;
+                let one_result = R::parse(res).await;
                 if let Ok(result) = one_result {
-                    results = R::merge(results, result, self.flag.clone())?
+                    results = R::merge(results, result)?
                 }
             }
         }
@@ -222,7 +215,6 @@ where
                 client,
                 rx: Arc::clone(&rx),
                 ret: ret.clone(),
-                flag: self.flag.clone(),
             };
             clients.push(client);
         }
@@ -253,6 +245,7 @@ where
                             .ok()
                     })
                     .map(|url| {
+                        dbg!(url.to_string());
                         let tx = tx.clone();
                         async move {
                             tx.send(Some(url))
@@ -271,10 +264,13 @@ where
             };
 
             let collect = async {
-                let mut result = R::blank(self.flag.clone());
+                let mut result = R::default();
                 for _ in 0..count {
-                    if let Some(Ok(new_set)) = res.recv().await {
-                        result = R::merge(result, new_set, self.flag.clone()).unwrap();
+                    if let Some(received) = res.recv().await {
+                        match received {
+                            Ok(new) => result = R::merge(result, new).unwrap(),
+                            Err(e) => { dbg!(e); }
+                        }
                     }
                 }
                 result
@@ -302,7 +298,6 @@ where
         FetcherExecutor {
             fetcher: self,
             location: resource,
-            flag: R::Specifier::default(),
             swarm,
         }
     }

@@ -6,7 +6,7 @@ use url::Url;
 
 use crate::{
     common::{Endpoint, Location},
-    hole::{HoleSet, reply::ReplySet},
+    HoleSet, ReplySet,
 };
 
 pub const DEFAULT_API_BASE: &str = "https://pkuhelper.pku.edu.cn/services/pkuhole/api.php";

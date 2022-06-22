@@ -1,4 +1,4 @@
-use crate::prebuilt::*;
+use super::*;
 
 /// The action of fetching a search result.
 #[derive(Hash, Eq, PartialEq, Debug, Clone)]

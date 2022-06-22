@@ -1,17 +1,15 @@
-use crate::prebuilt::*;
+use super::*;
 
-/// The action of fetching a single hole.
+/// The action of fetching attention list.
 #[derive(Hash, Eq, PartialEq, Debug, Clone)]
-pub struct FetchSingle {
-    pub id: HoleID,
+pub struct FetchReply { 
+    pub hole_id: hole::HoleID
 }
 
-impl Location<HoleSet> for FetchSingle {
+impl Location<ReplySet> for FetchReply {
     fn locate(&self, mut url: Url) -> Url {
-        url.query_pairs_mut().extend_pairs([
-            ("action", "getone"),
-            ("pid", &usize::from(self.id).to_string()),
-        ]);
+        url.query_pairs_mut()
+            .extend_pairs([("action", "getcomment"), ("pid", &String::from(self.hole_id))]);
         url
     }
 

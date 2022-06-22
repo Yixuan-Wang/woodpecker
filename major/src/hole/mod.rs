@@ -1,24 +1,24 @@
-use std::{
-    collections::HashSet,
-    hash::Hash,
-    ops::{BitOr, BitOrAssign},
-};
+use std::hash::Hash;
 
-use async_trait::async_trait;
-use bitflags::bitflags;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{serde_as, TimestampSeconds};
 use time::OffsetDateTime;
 
-use crate::common::{MergeResource, ParseResource, ParseResourceError, Resource};
+// use crate::common::{MergeResource, ParseResource, ParseResourceError, Resource};
 
 pub mod reply;
-mod derive_set;
 
-use crate::derive_set;
+#[derive(Debug, Deserialize)]
+pub struct RawHoleID(#[serde(deserialize_with = "lossy_deserialize_usize")] pub usize);
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
-pub struct HoleID(#[serde(deserialize_with = "lossy_deserialize_usize")] pub usize);
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+pub struct HoleID(pub usize);
+
+impl From<RawHoleID> for HoleID {
+    fn from(raw: RawHoleID) -> Self {
+        Self(raw.0)
+    }
+}
 
 impl From<usize> for HoleID {
     fn from(id: usize) -> Self {
@@ -38,7 +38,7 @@ impl From<HoleID> for String {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum HoleKind {
     Text,
@@ -47,10 +47,10 @@ pub enum HoleKind {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize, Eq)]
-pub struct Hole {
+#[derive(Debug, Deserialize)]
+pub struct RawHole {
     #[serde(rename = "pid")]
-    pub id: HoleID,
+    pub id: RawHoleID,
     pub text: String,
     #[serde(rename = "type", flatten)]
     pub kind: HoleKind,
@@ -63,9 +63,39 @@ pub struct Hole {
     pub tag: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Eq, Serialize)]
+pub struct Hole {
+    pub id: HoleID,
+    pub text: String,
+    pub kind: HoleKind,
+    pub timestamp: OffsetDateTime,
+    pub reply: usize,
+    pub likenum: usize,
+    pub tag: Option<String>,
+}
+
+impl From<RawHole> for Hole {
+    fn from(raw: RawHole) -> Self {
+        let RawHole { id, text, kind, timestamp, reply, likenum, tag } = raw;
+        Self { id: id.into(), text, kind, timestamp, reply, likenum, tag }
+    }
+}
+
 impl PartialEq for Hole {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
+    }
+}
+
+impl PartialOrd for Hole {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.id.partial_cmp(&other.id)
+    }
+}
+
+impl Ord for Hole {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.cmp(&other.id)
     }
 }
 
@@ -75,71 +105,42 @@ impl Hash for Hole {
     }
 }
 
-bitflags! {
-    #[derive(Default)]
-    pub struct HoleFlag: u8 {
-        const REPLY  = 0b00000001;
-        const LIKE   = 0b00000010;
-        const RECORD = 0b00000100;
-    }
-}
-
 #[serde_as]
 #[derive(Debug, Deserialize)]
-pub struct HolePage {
+pub struct RawHolePage {
     pub code: i32,
     #[serde(default)]
     pub count: Option<i32>,
-    pub data: Vec<Hole>,
+    pub data: Vec<RawHole>,
     #[serde(default)]
     #[serde_as(as = "Option<TimestampSeconds<i64>>")]
     pub timestamp: Option<OffsetDateTime>,
 }
 
-derive_set!{ hole, Hole, HoleEntry, HoleFlag, HolePage, HoleSet }
+// derive_set!{ hole, Hole, HoleEntry, RawHolePage, HoleSet, HoleList }
 
-impl Hash for HoleEntry {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.hole.id.hash(state);
-        if self.flag.contains(HoleFlag::REPLY) {
-            self.hole.reply.hash(state)
-        }
-        if self.flag.contains(HoleFlag::LIKE) {
-            self.hole.likenum.hash(state)
-        }
-        if self.flag.contains(HoleFlag::RECORD) {
-            self.record.hash(state)
-        }
-    }
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+pub struct HoleEntry {
+    pub entry: Hole,
+    pub snapshot: OffsetDateTime,
 }
 
-impl PartialEq for HoleEntry {
-    fn eq(&self, other: &Self) -> bool {
-        if self.hole.id != other.hole.id
-            || (self.flag.contains(HoleFlag::REPLY) && self.hole.reply != other.hole.reply)
-            || (self.flag.contains(HoleFlag::LIKE) && self.hole.likenum != other.hole.likenum)
-        {
-            false
-        } else {
-            !(self.flag.contains(HoleFlag::RECORD) && self.record != other.record)
-        }
-    }
-}
+impl IntoIterator for RawHolePage {
+    type Item = HoleEntry;
+    type IntoIter = <Vec<Self::Item> as IntoIterator>::IntoIter;
 
-impl From<(HolePage, HoleFlag)> for HoleSet {
-    fn from((hole_page, flag): (HolePage, HoleFlag)) -> Self {
-        let HolePage {
+    fn into_iter(self) -> Self::IntoIter {
+        let RawHolePage {
             data, timestamp, ..
-        } = hole_page;
-        let record = timestamp.unwrap_or_else(OffsetDateTime::now_utc);
-        let set = data
+        } = self;
+        let snapshot = timestamp.unwrap_or_else(OffsetDateTime::now_utc);
+        data
             .into_iter()
-            .map(|hole| HoleEntry { hole, record, flag })
-            .collect();
-        HoleSet { set, flag }
+            .map(|hole| HoleEntry { entry: hole.into(), snapshot })
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
-
 
 fn lossy_deserialize_usize<'de, D>(d: D) -> Result<usize, D::Error>
 where

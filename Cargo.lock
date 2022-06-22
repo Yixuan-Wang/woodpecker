@@ -434,6 +434,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "major"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "serde_with",
+ "time",
+]
+
+[[package]]
 name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1155,21 +1165,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "woodpecker-major"
+name = "woodpecker-canicapillus"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "bitflags",
  "dotenv",
  "futures",
+ "major",
  "once_cell",
  "regex",
  "reqwest",
  "serde",
  "serde_json",
- "serde_with",
  "thiserror",
- "time",
  "tokio",
  "url",
 ]
