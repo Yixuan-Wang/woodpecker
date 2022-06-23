@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use js_sys::SyntaxError;
 use major::hole::{
     reply::{RawReplyPage, ReplyEntry},
@@ -93,12 +95,12 @@ fn parse<'a, I, O, E>(input: &'a str) -> Result<O, JsValue>
 where
     I: Deserialize<'a> + IntoIterator<Item = E>,
     O: JsCast,
-    E: Serialize,
+    E: Serialize + Ord,
 {
     let x = serde_json::from_str::<I>(input);
     match x {
         Ok(r) => {
-            let v = r.into_iter().collect::<Vec<_>>();
+            let v = r.into_iter().collect::<BTreeSet<_>>();
             Ok(JsValue::from_serde(&v)
                 .map_err(|err| SyntaxError::new(&err.to_string()))?
                 .unchecked_into::<O>())
