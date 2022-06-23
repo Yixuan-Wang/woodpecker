@@ -135,7 +135,7 @@ impl IntoIterator for RawHolePage {
         let RawHolePage {
             data, timestamp, ..
         } = self;
-        let snapshot = timestamp.unwrap_or_else(OffsetDateTime::now_utc);
+        let snapshot = timestamp.unwrap_or_else(|| OffsetDateTime::now_utc().replace_nanosecond(0).unwrap());
         data
             .into_iter()
             .map(|hole| HoleEntry { entry: hole.into(), snapshot })

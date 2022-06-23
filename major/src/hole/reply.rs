@@ -1,5 +1,6 @@
 use std::hash::Hash;
 
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{serde_as, TimestampSeconds};
 use time::OffsetDateTime;
@@ -44,6 +45,7 @@ pub struct RawReply {
     #[serde(rename = "pid")]
     pub hole: RawHoleID,
     pub name: String,
+    #[serde(deserialize_with = "strip_people_prefix")]
     pub text: String,
     #[serde(rename = "islz", deserialize_with = "number_to_bool")]
     pub dz: bool,
@@ -121,7 +123,7 @@ impl IntoIterator for RawReplyPage {
         let RawReplyPage {
             data , ..
         } = self;
-        let snapshot = OffsetDateTime::now_utc();
+        let snapshot = OffsetDateTime::now_utc().replace_nanosecond(0).unwrap();
         data
             .into_iter()
             .map(|reply| ReplyEntry { entry: reply.into(), snapshot })
@@ -143,4 +145,14 @@ where
 {
     let s = usize::deserialize(d)?;
     Ok(s == 1)
+}
+
+static PEOPLE_PREFIX: Lazy<regex::Regex> = Lazy::new(|| regex::RegexBuilder::new(r#"\[(洞主|\w+?(\s\w+)?)\]\s+"#).build().unwrap());
+
+fn strip_people_prefix<'de, D>(d: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(d)?;
+    Ok(String::from(PEOPLE_PREFIX.replace(&s, "")))
 }

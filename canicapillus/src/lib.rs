@@ -11,6 +11,8 @@ pub type ReplySet = BTreeSet<ReplyEntry>;
 
 #[cfg(test)]
 mod tests {
+    use std::{fs::File, io::Write};
+
     use crate::{
         fetcher,
         hole::{HoleID},
@@ -35,7 +37,7 @@ mod tests {
                 let string = serde_json::to_string(&res).unwrap();
                 let back = serde_json::from_str::<ReplySet>(&string).unwrap();
                 assert_eq!(res, back);
-                dbg!(back);
+                // dbg!(back);
              },
             Err(err) => { dbg!(err); }
         };
@@ -53,6 +55,8 @@ mod tests {
         let string = serde_json::to_string(&result).unwrap();
         let back = serde_json::from_str::<HoleSet>(&string).unwrap();
         assert_eq!(result, back);
+        let mut file = File::create("holes.test.json").unwrap();
+        file.write_all(string.as_bytes()).unwrap();
         dbg!(string);
         // dbg!(result);
     }
