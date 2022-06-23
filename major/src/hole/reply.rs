@@ -59,6 +59,7 @@ pub struct Reply {
     pub name: String,
     pub text: String,
     pub dz: bool,
+    #[serde(with = "crate::util::iso8601")]
     pub timestamp: OffsetDateTime,
     pub tag: Option<String>,
 }
@@ -108,6 +109,7 @@ pub struct RawReplyPage {
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub struct ReplyEntry {
     pub entry: Reply,
+    #[serde(with = "crate::util::iso8601")]
     pub snapshot: OffsetDateTime,
 }
 

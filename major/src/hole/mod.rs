@@ -68,6 +68,7 @@ pub struct Hole {
     pub id: HoleID,
     pub text: String,
     pub kind: HoleKind,
+    #[serde(with = "crate::util::iso8601")]
     pub timestamp: OffsetDateTime,
     pub reply: usize,
     pub likenum: usize,
@@ -122,6 +123,7 @@ pub struct RawHolePage {
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub struct HoleEntry {
     pub entry: Hole,
+    #[serde(with = "crate::util::iso8601")]
     pub snapshot: OffsetDateTime,
 }
 
