@@ -37,7 +37,7 @@ mod tests {
                 let string = serde_json::to_string(&res).unwrap();
                 let back = serde_json::from_str::<ReplySet>(&string).unwrap();
                 assert_eq!(res, back);
-                // dbg!(back);
+                dbg!(back);
              },
             Err(err) => { dbg!(err); }
         };

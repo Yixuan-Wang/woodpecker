@@ -1,11 +1,12 @@
 use std::hash::Hash;
 
+use chrono::{DateTime, Utc, SubsecRound};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::{serde_as, TimestampSeconds};
-use time::OffsetDateTime;
 
-use super::{RawHoleID, HoleID, lossy_deserialize_usize};
+use crate::util::lossy_deserialize_usize;
+
+use super::{RawHoleID, HoleID};
 
 #[derive(Debug, Deserialize)]
 pub struct RawReplyID(#[serde(deserialize_with = "lossy_deserialize_usize")] pub usize);
@@ -37,7 +38,6 @@ impl From<ReplyID> for String {
     }
 }
 
-#[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct RawReply {
     #[serde(rename = "cid")]
@@ -47,10 +47,10 @@ pub struct RawReply {
     pub name: String,
     #[serde(deserialize_with = "strip_people_prefix")]
     pub text: String,
-    #[serde(rename = "islz", deserialize_with = "number_to_bool")]
+    #[serde(rename = "islz", deserialize_with = "crate::util::number_to_bool")]
     pub dz: bool,
-    #[serde_as(as = "TimestampSeconds<String>")]
-    pub timestamp: OffsetDateTime,
+    #[serde(deserialize_with = "crate::util::raw_timestamp::deserialize_from_str")]
+    pub timestamp: DateTime<Utc>,
     pub tag: Option<String>,
 }
 
@@ -61,14 +61,14 @@ pub struct Reply {
     pub name: String,
     pub text: String,
     pub dz: bool,
-    #[serde(with = "crate::util::iso8601")]
-    pub timestamp: OffsetDateTime,
+    pub timestamp: DateTime<Utc>,
     pub tag: Option<String>,
 }
 
 impl From<RawReply> for Reply {
     fn from(raw: RawReply) -> Self {
         let RawReply { id, hole, name, text, dz, timestamp, tag } = raw;
+        let timestamp = DateTime::from(timestamp);
         Self { id: id.into(), hole: hole.into(), name, text, dz, timestamp, tag }
     }
 }
@@ -104,15 +104,15 @@ pub struct ReplyFlag(bool);
 pub struct RawReplyPage {
     pub code: usize,
     pub data: Vec<RawReply>,
-    #[serde(deserialize_with = "number_to_bool")]
+    #[serde(deserialize_with = "crate::util::number_to_bool")]
     pub attention: bool,
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub struct ReplyEntry {
     pub entry: Reply,
-    #[serde(with = "crate::util::iso8601")]
-    pub snapshot: OffsetDateTime,
+    #[serde(with = "crate::util::local_timestamp")]
+    pub snapshot: DateTime<Utc>,
 }
 
 impl IntoIterator for RawReplyPage {
@@ -123,7 +123,7 @@ impl IntoIterator for RawReplyPage {
         let RawReplyPage {
             data , ..
         } = self;
-        let snapshot = OffsetDateTime::now_utc().replace_nanosecond(0).unwrap();
+        let snapshot = Utc::now().trunc_subsecs(0);
         data
             .into_iter()
             .map(|reply| ReplyEntry { entry: reply.into(), snapshot })
@@ -138,14 +138,6 @@ where
     let s = String::deserialize(d)?;
     Ok(s.parse::<usize>().unwrap_or(0) == 1)
 } */
-
-fn number_to_bool<'de, D>(d: D) -> Result<bool, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = usize::deserialize(d)?;
-    Ok(s == 1)
-}
 
 static PEOPLE_PREFIX: Lazy<regex::Regex> = Lazy::new(|| regex::RegexBuilder::new(r#"\[(洞主|\w+?(\s\w+)?)\]\s+"#).build().unwrap());
 

@@ -1,8 +1,9 @@
 use std::hash::Hash;
 
-use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::{serde_as, TimestampSeconds};
-use time::OffsetDateTime;
+use chrono::{DateTime, Utc, SubsecRound};
+use serde::{Deserialize, Serialize};
+
+use crate::util::lossy_deserialize_usize;
 
 // use crate::common::{MergeResource, ParseResource, ParseResourceError, Resource};
 
@@ -46,7 +47,6 @@ pub enum HoleKind {
     Audio { url: String },
 }
 
-#[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct RawHole {
     #[serde(rename = "pid")]
@@ -54,8 +54,8 @@ pub struct RawHole {
     pub text: String,
     #[serde(rename = "type", flatten)]
     pub kind: HoleKind,
-    #[serde_as(as = "TimestampSeconds<String>")]
-    pub timestamp: OffsetDateTime,
+    #[serde(deserialize_with = "crate::util::raw_timestamp::deserialize_from_str")]
+    pub timestamp: DateTime<Utc>,
     #[serde(deserialize_with = "lossy_deserialize_usize")]
     pub reply: usize,
     #[serde(deserialize_with = "lossy_deserialize_usize")]
@@ -68,8 +68,8 @@ pub struct Hole {
     pub id: HoleID,
     pub text: String,
     pub kind: HoleKind,
-    #[serde(with = "crate::util::iso8601")]
-    pub timestamp: OffsetDateTime,
+    #[serde(with = "crate::util::local_timestamp")]
+    pub timestamp: DateTime<Utc>,
     pub reply: usize,
     pub likenum: usize,
     pub tag: Option<String>,
@@ -77,8 +77,24 @@ pub struct Hole {
 
 impl From<RawHole> for Hole {
     fn from(raw: RawHole) -> Self {
-        let RawHole { id, text, kind, timestamp, reply, likenum, tag } = raw;
-        Self { id: id.into(), text, kind, timestamp, reply, likenum, tag }
+        let RawHole {
+            id,
+            text,
+            kind,
+            timestamp,
+            reply,
+            likenum,
+            tag,
+        } = raw;
+        Self {
+            id: id.into(),
+            text,
+            kind,
+            timestamp,
+            reply,
+            likenum,
+            tag,
+        }
     }
 }
 
@@ -106,16 +122,17 @@ impl Hash for Hole {
     }
 }
 
-#[serde_as]
 #[derive(Debug, Deserialize)]
 pub struct RawHolePage {
     pub code: i32,
     #[serde(default)]
     pub count: Option<i32>,
     pub data: Vec<RawHole>,
-    #[serde(default)]
-    #[serde_as(as = "Option<TimestampSeconds<i64>>")]
-    pub timestamp: Option<OffsetDateTime>,
+    #[serde(
+        default,
+        deserialize_with = "crate::util::raw_timestamp::optional_deserialize_from_number"
+    )]
+    pub timestamp: Option<DateTime<Utc>>,
 }
 
 // derive_set!{ hole, Hole, HoleEntry, RawHolePage, HoleSet, HoleList }
@@ -123,8 +140,8 @@ pub struct RawHolePage {
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub struct HoleEntry {
     pub entry: Hole,
-    #[serde(with = "crate::util::iso8601")]
-    pub snapshot: OffsetDateTime,
+    #[serde(with = "crate::util::local_timestamp")]
+    pub snapshot: DateTime<Utc>,
 }
 
 impl IntoIterator for RawHolePage {
@@ -135,19 +152,13 @@ impl IntoIterator for RawHolePage {
         let RawHolePage {
             data, timestamp, ..
         } = self;
-        let snapshot = timestamp.unwrap_or_else(|| OffsetDateTime::now_utc().replace_nanosecond(0).unwrap());
-        data
-            .into_iter()
-            .map(|hole| HoleEntry { entry: hole.into(), snapshot })
+        let snapshot = timestamp.unwrap_or_else(|| Utc::now().trunc_subsecs(0));
+        data.into_iter()
+            .map(|hole| HoleEntry {
+                entry: hole.into(),
+                snapshot,
+            })
             .collect::<Vec<_>>()
             .into_iter()
     }
-}
-
-fn lossy_deserialize_usize<'de, D>(d: D) -> Result<usize, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(d)?;
-    Ok(s.parse::<usize>().unwrap_or(0))
 }
