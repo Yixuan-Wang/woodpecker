@@ -2,5 +2,4 @@
 members = [
     "canicapillus",
     "major",
-    "major-wasm",
 ]
