@@ -3,7 +3,7 @@ use std::hash::Hash;
 use chrono::{DateTime, Utc, SubsecRound};
 use serde::{Deserialize, Serialize};
 
-use crate::util::lossy_deserialize_usize;
+use crate::util::{lossy_deserialize_usize, OneOrMany};
 
 // use crate::common::{MergeResource, ParseResource, ParseResourceError, Resource};
 
@@ -127,7 +127,7 @@ pub struct RawHolePage {
     pub code: i32,
     #[serde(default)]
     pub count: Option<i32>,
-    pub data: Vec<RawHole>,
+    pub data: OneOrMany<RawHole>,
     #[serde(
         default,
         deserialize_with = "crate::util::raw_timestamp::optional_deserialize_from_number"
@@ -153,7 +153,8 @@ impl IntoIterator for RawHolePage {
             data, timestamp, ..
         } = self;
         let snapshot = timestamp.unwrap_or_else(|| Utc::now().trunc_subsecs(0));
-        data.into_iter()
+        Vec::from(data)
+            .into_iter()
             .map(|hole| HoleEntry {
                 entry: hole.into(),
                 snapshot,

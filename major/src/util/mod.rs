@@ -74,3 +74,23 @@ where
     let s = usize::deserialize(d)?;
     Ok(s == 1)
 }
+
+// https://github.com/Mingun/ksc-rs/blob/8532f701e660b07b6d2c74963fdc0490be4fae4b/src/parser.rs#L18-L42
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum OneOrMany<T> {
+  /// Single value
+  One(T),
+  /// Array of values
+  Vec(Vec<T>),
+}
+
+impl<T> From<OneOrMany<T>> for Vec<T> {
+  fn from(from: OneOrMany<T>) -> Self {
+    match from {
+      OneOrMany::One(val) => vec![val],
+      OneOrMany::Vec(vec) => vec,
+    }
+  }
+}

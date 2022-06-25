@@ -60,4 +60,20 @@ mod tests {
         dbg!(string);
         // dbg!(result);
     }
+
+    #[tokio::test]
+    async fn fetch_single_hole() {
+        let mut fetcher = fetcher::Fetcher::default();
+        let fetch = FetchSingle { id: HoleID(3558999) };
+        let result = fetcher
+            .fetch(&fetch)
+            .execute()
+            .await
+            .unwrap();
+        let string = serde_json::to_string(&result).unwrap();
+        let back = serde_json::from_str::<HoleSet>(&string).unwrap();
+        assert_eq!(result, back);
+        dbg!(string);
+        // dbg!(result);
+    }
 }
