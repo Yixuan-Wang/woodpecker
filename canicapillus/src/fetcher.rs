@@ -293,9 +293,8 @@ where
     pub fn fetch<'fch, 'lct>(
         &'fch mut self,
         resource: &'lct dyn Location<R>,
-        swarm: Option<Swarm>,
     ) -> FetcherExecutor<'fch, 'lct, A, R> {
-        let swarm = swarm.or_else(|| resource.default_swarm());
+        let swarm = resource.default_swarm();
         FetcherExecutor {
             fetcher: self,
             location: resource,

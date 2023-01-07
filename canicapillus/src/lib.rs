@@ -28,7 +28,8 @@ mod tests {
             hole_id: HoleID(3761702),
         };
         let result = fetcher
-                .fetch(&fetch, Some(Swarm::Concurrent { count: 100, page_size: 100 }))
+                .fetch(&fetch)
+                .swarm(Some(Swarm::Concurrent { count: 100, page_size: 100 }))
                 .execute()
                 .await;
 
@@ -48,7 +49,8 @@ mod tests {
         let mut fetcher = fetcher::Fetcher::default();
         let fetch = FetchAttention;
         let result = fetcher
-            .fetch(&fetch, Some(Swarm::Concurrent { count: 50, page_size: 100 }))
+            .fetch(&fetch)
+            .swarm(Some(Swarm::Concurrent { count: 50, page_size: 100 }))
             .execute()
             .await
             .unwrap();
@@ -66,7 +68,7 @@ mod tests {
         let mut fetcher = fetcher::Fetcher::default();
         let fetch = FetchSingle { id: HoleID(472865) };
         let result = fetcher
-            .fetch(&fetch, None)
+            .fetch(&fetch)
             .execute()
             .await
             .unwrap();
@@ -83,7 +85,8 @@ mod tests {
         let mut fetcher = fetcher::Fetcher::default();
         let fetch = FetchSearch { keyword: "依托".to_string() };
         let result = fetcher
-            .fetch(&fetch, Some(Swarm::Concurrent { count: 50, page_size: 100 }))
+            .fetch(&fetch)
+            .swarm(Some(Swarm::Concurrent { count: 50, page_size: 100 }))
             .execute()
             .await
             .unwrap();
