@@ -6,6 +6,7 @@ pub use resource::*;
 
 pub trait Endpoint<R>: Sized {
     fn locate(&self, location: &dyn Location<R>) -> Url;
+    fn user_token(&self) -> &str;
 }
 
 #[derive(Error, Debug)]

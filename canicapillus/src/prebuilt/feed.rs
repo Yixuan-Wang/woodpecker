@@ -5,8 +5,8 @@ use super::*;
 pub struct FetchFeed;
 
 impl Location<HoleSet> for FetchFeed {
-    fn locate(&self, mut url: Url) -> Url {
-        url.query_pairs_mut().append_pair("action", "getlist");
+    fn locate(&self, url: Url) -> Url {
+        let url = url.join("pku_hole").unwrap();
         url
     }
 
@@ -15,10 +15,10 @@ impl Location<HoleSet> for FetchFeed {
         mut url: Url,
         swarm: Option<&Swarm>,
         page: usize,
-        _page_size: usize,
+        page_size: usize,
     ) -> Result<Url, crate::common::SwarmError> {
         if swarm.is_none() {
-            url.query_pairs_mut().append_pair("p", "1");
+            url.query_pairs_mut().extend_pairs([("page", "1"), ("limit", "25")]);
             return Ok(url);
         }
 
@@ -30,7 +30,7 @@ impl Location<HoleSet> for FetchFeed {
         }
         assert!(page >= 1, "Resource {:?} requires page >= 1", self);
 
-        url.query_pairs_mut().append_pair("p", &page.to_string());
+        url.query_pairs_mut().extend_pairs([("page", &page.to_string()), ("limit", &page_size.to_string())]);
         Ok(url)
     }
 

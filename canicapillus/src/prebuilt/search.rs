@@ -7,6 +7,46 @@ pub struct FetchSearch {
 }
 
 impl Location<HoleSet> for FetchSearch {
+    fn locate(&self, url: Url) -> Url {
+        let mut url = url.join("pku_hole").unwrap();
+        url.query_pairs_mut().append_pair("keyword", &self.keyword);
+        url
+    }
+
+    fn dispatch(
+        &self,
+        mut url: Url,
+        swarm: Option<&Swarm>,
+        page: usize,
+        page_size: usize,
+    ) -> Result<Url, crate::common::SwarmError> {
+        if swarm.is_none() {
+            url.query_pairs_mut().extend_pairs([("page", "1"), ("limit", "25")]);
+            return Ok(url);
+        }
+
+        #[cfg(feature = "fireman")]
+        {
+            if page > 100 {
+                return Err(SwarmError::Fireman);
+            }
+        }
+        assert!(page >= 1, "Resource {:?} requires page >= 1", self);
+
+        url.query_pairs_mut().extend_pairs([("page", &page.to_string()), ("limit", &page_size.to_string())]);
+        Ok(url)
+    }
+
+    fn default_swarm(&self) -> Option<Swarm> {
+        Some(Swarm::Concurrent {
+            count: 4,
+            page_size: 30,
+        })
+    }
+}
+
+
+/* impl Location<HoleSet> for FetchSearch {
     fn locate(&self, mut url: Url) -> Url {
         url.query_pairs_mut()
             .extend_pairs([("action", "search"), ("keywords", &self.keyword)]);
@@ -52,4 +92,4 @@ impl Location<HoleSet> for FetchSearch {
             page_size: 50,
         })
     }
-}
+} */

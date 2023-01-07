@@ -9,9 +9,9 @@ use crate::{
     HoleSet, ReplySet,
 };
 
-pub const DEFAULT_API_BASE: &str = "https://pkuhelper.pku.edu.cn/services/pkuhole/api.php";
-const DEFAULT_PARAMS: [(&str, &str); 2] =
-    [("PKUHelperAPI", "3.0"), ("jsapiver", "201027113050-459074")];
+pub const DEFAULT_API_BASE: &str = "https://treehole.pku.edu.cn/api/";
+const DEFAULT_PARAMS: [(&str, &str); 0] =
+    [/* ("PKUHelperAPI", "3.0"), ("jsapiver", "201027113050-459074") */];
 
 // A entrypoint
 pub struct API {
@@ -33,7 +33,7 @@ impl Default for API {
             DEFAULT_API_BASE,
             DEFAULT_PARAMS
                 .iter()
-                .chain([("user_token", user_token.as_str())].iter()),
+                // .chain([("user_token", user_token.as_str())].iter()),
         )
         .unwrap();
 
@@ -56,7 +56,7 @@ impl API {
             params
                 .into_iter()
                 .flatten()
-                .chain([("user_token", user_token)].iter()),
+                // .chain([("user_token", user_token)].iter()),
         )
         .unwrap();
 
@@ -75,10 +75,18 @@ impl Endpoint<HoleSet> for API {
     fn locate(&self, location: &dyn Location<HoleSet>) -> Url {
         location.locate(self.endpoint.clone())
     }
+
+    fn user_token(&self) -> &str {
+        self.user_token()
+    }
 }
 
 impl Endpoint<ReplySet> for API {
     fn locate(&self, location: &dyn Location<ReplySet>) -> Url {
         location.locate(self.endpoint.clone())
+    }
+
+    fn user_token(&self) -> &str {
+        self.user_token()
     }
 }

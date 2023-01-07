@@ -17,7 +17,7 @@ mod tests {
         fetcher,
         hole::{HoleID},
         HoleSet, ReplySet,
-        prebuilt::*,
+        prebuilt::*, common::Swarm,
     };
 
     #[tokio::test]
@@ -28,7 +28,7 @@ mod tests {
             hole_id: HoleID(3761702),
         };
         let result = fetcher
-                .fetch(&fetch)
+                .fetch(&fetch, Some(Swarm::Concurrent { count: 100, page_size: 100 }))
                 .execute()
                 .await;
 
@@ -46,9 +46,9 @@ mod tests {
     #[tokio::test]
     async fn fetch_hole() {
         let mut fetcher = fetcher::Fetcher::default();
-        let fetch = FetchFeed;
+        let fetch = FetchAttention;
         let result = fetcher
-            .fetch(&fetch)
+            .fetch(&fetch, Some(Swarm::Concurrent { count: 50, page_size: 100 }))
             .execute()
             .await
             .unwrap();
@@ -64,9 +64,26 @@ mod tests {
     #[tokio::test]
     async fn fetch_single_hole() {
         let mut fetcher = fetcher::Fetcher::default();
-        let fetch = FetchSingle { id: HoleID(3558999) };
+        let fetch = FetchSingle { id: HoleID(472865) };
         let result = fetcher
-            .fetch(&fetch)
+            .fetch(&fetch, None)
+            .execute()
+            .await
+            .unwrap();
+        let string = serde_json::to_string(&result).unwrap();
+        dbg!(string);
+        /* let back = serde_json::from_str::<HoleSet>(&string).unwrap();
+        assert_eq!(result, back);
+        dbg!(string); */
+        // dbg!(result);
+    }
+
+    #[tokio::test]
+    async fn fetch_search() {
+        let mut fetcher = fetcher::Fetcher::default();
+        let fetch = FetchSearch { keyword: "依托".to_string() };
+        let result = fetcher
+            .fetch(&fetch, Some(Swarm::Concurrent { count: 50, page_size: 100 }))
             .execute()
             .await
             .unwrap();

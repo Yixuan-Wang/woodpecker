@@ -9,7 +9,7 @@ use crate::util::lossy_deserialize_usize;
 use super::{RawHoleID, HoleID};
 
 #[derive(Debug, Deserialize)]
-pub struct RawReplyID(#[serde(deserialize_with = "lossy_deserialize_usize")] pub usize);
+pub struct RawReplyID(/* #[serde(deserialize_with = "lossy_deserialize_usize")]  */pub usize);
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub struct ReplyID(pub usize);
@@ -49,7 +49,7 @@ pub struct RawReply {
     pub text: String,
     #[serde(rename = "islz", deserialize_with = "crate::util::number_to_bool")]
     pub dz: bool,
-    #[serde(deserialize_with = "crate::util::raw_timestamp::deserialize_from_str")]
+    #[serde(deserialize_with = "crate::util::raw_timestamp::deserialize_from_int")]
     pub timestamp: DateTime<Utc>,
     pub tag: Option<String>,
 }
@@ -103,8 +103,9 @@ pub struct ReplyFlag(bool);
 #[derive(Debug, Deserialize)]
 pub struct RawReplyPage {
     pub code: usize,
+    #[serde(deserialize_with = "crate::util::unwrap_one_layer_of_data")]
     pub data: Vec<RawReply>,
-    #[serde(deserialize_with = "crate::util::number_to_bool")]
+    #[serde(deserialize_with = "crate::util::number_to_bool", default)]
     pub attention: bool,
 }
 

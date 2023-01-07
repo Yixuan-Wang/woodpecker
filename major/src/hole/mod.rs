@@ -10,7 +10,7 @@ use crate::util::{lossy_deserialize_usize, OneOrMany};
 pub mod reply;
 
 #[derive(Debug, Deserialize)]
-pub struct RawHoleID(#[serde(deserialize_with = "lossy_deserialize_usize")] pub usize);
+pub struct RawHoleID(/* #[serde(deserialize_with = "lossy_deserialize_usize")]  */pub usize);
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub struct HoleID(pub usize);
@@ -43,8 +43,8 @@ impl From<HoleID> for String {
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum HoleKind {
     Text,
-    Image { url: String },
-    Audio { url: String },
+    Image { #[serde(default)] url: Option<String> },
+    Audio { #[serde(default)] url: Option<String> },
 }
 
 #[derive(Debug, Deserialize)]
@@ -54,11 +54,11 @@ pub struct RawHole {
     pub text: String,
     #[serde(rename = "type", flatten)]
     pub kind: HoleKind,
-    #[serde(deserialize_with = "crate::util::raw_timestamp::deserialize_from_str")]
+    #[serde(deserialize_with = "crate::util::raw_timestamp::deserialize_from_int")]
     pub timestamp: DateTime<Utc>,
-    #[serde(deserialize_with = "lossy_deserialize_usize")]
+    // #[serde(deserialize_with = "lossy_deserialize_usize")]
     pub reply: usize,
-    #[serde(deserialize_with = "lossy_deserialize_usize")]
+    // #[serde(deserialize_with = "lossy_deserialize_usize")]
     pub likenum: usize,
     pub tag: Option<String>,
 }
@@ -127,6 +127,7 @@ pub struct RawHolePage {
     pub code: i32,
     #[serde(default)]
     pub count: Option<i32>,
+    #[serde(deserialize_with = "crate::util::unwrap_one_layer_of_data")]
     pub data: OneOrMany<RawHole>,
     #[serde(
         default,

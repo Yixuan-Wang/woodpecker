@@ -7,11 +7,8 @@ pub struct FetchSingle {
 }
 
 impl Location<HoleSet> for FetchSingle {
-    fn locate(&self, mut url: Url) -> Url {
-        url.query_pairs_mut().extend_pairs([
-            ("action", "getone"),
-            ("pid", &usize::from(self.id).to_string()),
-        ]);
+    fn locate(&self, url: Url) -> Url {
+        let url = url.join(&format!("pku/{}", String::from(self.id))).unwrap();
         url
     }
 

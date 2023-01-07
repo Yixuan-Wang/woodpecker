@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::{marker::PhantomData, sync::Arc, io};
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use reqwest::{self, header, Client};
@@ -42,19 +42,20 @@ pub enum FetcherError {
 }
 
 pub trait FetcherClientBuilder {
-    fn build(&self) -> Client;
+    fn build(&self, user_token: &str) -> Client;
 }
 
 pub struct DefaultFetcherClientBuilder;
 
 impl FetcherClientBuilder for DefaultFetcherClientBuilder {
-    fn build(&self) -> Client {
+    fn build(&self, user_token: &str) -> Client {
         let mut default_headers = header::HeaderMap::new();
         default_headers.insert(
             header::REFERER,
-            header::HeaderValue::from_static("https://pkuhelper.pku.edu.cn/hole/"),
+            header::HeaderValue::from_static("https://treehole.pku.edu.cn/web/"),
         );
         default_headers.insert(header::USER_AGENT, header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36"));
+        default_headers.insert(header::AUTHORIZATION, header::HeaderValue::from_str(&format!("Bearer {}", user_token)).unwrap());
 
         Client::builder()
             .default_headers(default_headers)
@@ -162,13 +163,12 @@ where
 
     async fn execute_one(&mut self) -> Result<R, FetcherError> {
         const MEANINGLESS: usize = 1;
-        let client = self.fetcher.client_builder.build();
+        let client = self.fetcher.client_builder.build(self.fetcher.api.user_token());
         let url = self.fetcher.api.locate(self.location);
         let url = self
             .location
             .dispatch(url, None, MEANINGLESS, MEANINGLESS)?;
         let res = client.get(url).send().await?;
-
         Ok(R::parse(res).await?)
     }
 
@@ -178,7 +178,7 @@ where
             Some(ref swarm @ Swarm::Sequential { count, page_size }),
             (swarm, count, page_size)
         );
-        let client = self.fetcher.client_builder.build();
+        let client = self.fetcher.client_builder.build(self.fetcher.api.user_token());
         let mut results = R::default();
         for page in 1..=count {
             let url = self.fetcher.api.locate(self.location);
@@ -210,7 +210,7 @@ where
         // initializing clients
         let mut clients = Vec::with_capacity(pool_size);
         for _ in 0..pool_size {
-            let client = self.fetcher.client_builder.build();
+            let client = self.fetcher.client_builder.build(self.fetcher.api.user_token());
             let client = FetcherClientNode {
                 client,
                 rx: Arc::clone(&rx),
@@ -293,8 +293,9 @@ where
     pub fn fetch<'fch, 'lct>(
         &'fch mut self,
         resource: &'lct dyn Location<R>,
+        swarm: Option<Swarm>,
     ) -> FetcherExecutor<'fch, 'lct, A, R> {
-        let swarm = resource.default_swarm();
+        let swarm = swarm.or_else(|| resource.default_swarm());
         FetcherExecutor {
             fetcher: self,
             location: resource,

@@ -13,11 +13,19 @@ pub mod raw_timestamp {
             .serialize(serializer)
     } */
 
-    pub fn deserialize_from_str<'de, D>(d: D) -> Result<DateTime<Utc>, D::Error>
+    /* pub fn deserialize_from_str<'de, D>(d: D) -> Result<DateTime<Utc>, D::Error>
     where
         D: Deserializer<'de>,
     {
         let timestamp = String::deserialize(d)?.parse::<i64>().unwrap_or(0);
+        Ok(from_timestamp(timestamp))
+    } */
+
+    pub fn deserialize_from_int<'de, D>(d: D) -> Result<DateTime<Utc>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let timestamp = i64::deserialize(d)?;
         Ok(from_timestamp(timestamp))
     }
 
@@ -59,6 +67,35 @@ pub mod local_timestamp {
     }
 }
 
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(untagged)]
+enum ExtraDataLayer<T>
+where T: Default {
+    Data(#[serde(default)] T),
+    Embedded {
+        #[serde(default)]
+        data: T
+    }
+}
+
+impl<T> ExtraDataLayer<T>
+where T: Default {
+    fn get_data(self) -> T {
+        match self {
+            ExtraDataLayer::Data(data) => data,
+            ExtraDataLayer::Embedded { data } => data,
+        }
+    }
+}
+
+pub fn unwrap_one_layer_of_data<'de, D, T>(d: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    ExtraDataLayer::<T>::deserialize(d).map(|data| data.get_data())
+}
+
 pub fn lossy_deserialize_usize<'de, D>(d: D) -> Result<usize, D::Error>
 where
     D: Deserializer<'de>,
@@ -84,6 +121,12 @@ pub enum OneOrMany<T> {
   One(T),
   /// Array of values
   Vec(Vec<T>),
+}
+
+impl<T> Default for OneOrMany<T> {
+    fn default() -> Self {
+        Self::Vec(vec![])
+    }
 }
 
 impl<T> From<OneOrMany<T>> for Vec<T> {

@@ -7,23 +7,32 @@ pub struct FetchReply {
 }
 
 impl Location<ReplySet> for FetchReply {
-    fn locate(&self, mut url: Url) -> Url {
-        url.query_pairs_mut()
-            .extend_pairs([("action", "getcomment"), ("pid", &String::from(self.hole_id))]);
+    fn locate(&self, url: Url) -> Url {
+        let url = url.join(&format!("pku_comment/{}", String::from(self.hole_id))).unwrap();
         url
     }
 
     fn dispatch(
         &self,
-        url: Url,
+        mut url: Url,
         swarm: Option<&Swarm>,
-        _page: usize,
-        _page_size: usize,
+        page: usize,
+        page_size: usize,
     ) -> Result<Url, crate::common::SwarmError> {
         if swarm.is_none() {
-            Ok(url)
-        } else {
-            Err(SwarmError::Unsupported)
+            url.query_pairs_mut().extend_pairs([("page", "1"), ("limit", "25")]);
+            return Ok(url);
         }
+
+        #[cfg(feature = "fireman")]
+        {
+            if page > 100 {
+                return Err(SwarmError::Fireman);
+            }
+        }
+        assert!(page >= 1, "Resource {:?} requires page >= 1", self);
+
+        url.query_pairs_mut().extend_pairs([("page", &page.to_string()), ("limit", &page_size.to_string())]);
+        Ok(url)
     }
 }
